@@ -1,0 +1,8 @@
+# Core dependencies for Financial Planner Dashboard
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+plotly>=5.14.0
+
+# Optional: For enhanced analytics (uncomment if using)
+# streamlit-analytics>=0.4.1

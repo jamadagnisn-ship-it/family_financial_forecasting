@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Personal data files (don't commit personal financial data!)
+Accounts_Sumanth.csv
+*_personal.csv
+projection_*.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

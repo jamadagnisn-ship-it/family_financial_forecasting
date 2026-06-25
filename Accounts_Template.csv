@@ -1,0 +1,8 @@
+Owner,Age,Type,Pre-tax,Balance,Annual Contribution
+Jack Doe,45,Vanguard,No,100000,15000
+Jack Doe,45,Schwab,No,20000,5000
+Jack Doe,45,401K,Yes,100000,10000
+Jane Doe,43,Fidelity,No,100000,10000
+Jane Doe,43,401K,Yes,10000,18000
+Child 1,8,529,No,10000,5000
+Child 2,5,529,No,10000,5000

@@ -1,0 +1,29 @@
+I want to build a comprehensive financial planning dashboard for myself. Let's ideate through the design first to plan through different retirement scenarios. 
+
+This should cover all different types of accounts - e.g., post-tax brokerage accounts, 401Ks for my wife and myself, 529 plans for the kids. 
+
+We could start with a good class structure for an account that can hold information such as: 
+1. Type of account (pre vs. post tax)
+2. Current balance. 
+3. Typical annual contribution (and for how many more years). 
+4. Growth rate assumptions. 
+5. When would contributions stop but growth can continue. 
+6. A combination of withdrawals and continued growth once we start withdrawals. 
+
+One can then instantiate many such classes for the different accounts. 
+
+We can then aggregate over these classes to model total investment corpus over the a few years when we specify a range of cashflows needed to support our lifestyle. 
+
+The family has 4 individuals:
+Me (Sumanth) - age 42
+Wife (Rasika) - age 42
+Son 1 (Ishaan) - age 10
+Sone 2 (Rohan) - age 3. 
+
+I want to be able to model scenarios where we retire at e.g., 53-54 - so before we can access the pre-tax retirement accounts. 
+
+What would be a good data/model structue for this? 
+
+Finally, let's have a streamlit dashboard to play with different scenarios. 
+
+
