@@ -282,19 +282,6 @@ def plot_portfolio_projection(results_df, scenario_name, children_info=None, pri
     
     # Add Monte Carlo confidence bands if available
     if 'mc_10th_percentile' in results_df.columns and results_df['mc_10th_percentile'].sum() > 0:
-        # 90th percentile (optimistic)
-        fig.add_trace(
-            go.Scatter(
-                x=results_df['owner_age'],
-                y=results_df['mc_90th_percentile'],
-                name='Monte Carlo 90th %ile',
-                line=dict(color='rgba(31, 119, 180, 0.3)', width=1, dash='dot'),
-                hovertemplate='90th percentile: $%{y:,.0f}<extra></extra>',
-                showlegend=True
-            ),
-            row=1, col=1
-        )
-        
         # 50th percentile (median)
         fig.add_trace(
             go.Scatter(
@@ -302,7 +289,20 @@ def plot_portfolio_projection(results_df, scenario_name, children_info=None, pri
                 y=results_df['mc_50th_percentile'],
                 name='Monte Carlo Median',
                 line=dict(color='rgba(31, 119, 180, 0.5)', width=2, dash='dash'),
-                hovertemplate='Median: $%{y:,.0f}<extra></extra>',
+                hovertemplate='Median (50th): $%{y:,.0f}<extra></extra>',
+                showlegend=True
+            ),
+            row=1, col=1
+        )
+        
+        # 25th percentile
+        fig.add_trace(
+            go.Scatter(
+                x=results_df['owner_age'],
+                y=results_df['mc_25th_percentile'],
+                name='Monte Carlo 25th %ile',
+                line=dict(color='rgba(255, 165, 0, 0.5)', width=1.5, dash='dashdot'),
+                hovertemplate='25th percentile: $%{y:,.0f}<extra></extra>',
                 showlegend=True
             ),
             row=1, col=1
@@ -314,9 +314,9 @@ def plot_portfolio_projection(results_df, scenario_name, children_info=None, pri
                 x=results_df['owner_age'],
                 y=results_df['mc_10th_percentile'],
                 name='Monte Carlo 10th %ile',
-                line=dict(color='rgba(255, 127, 14, 0.5)', width=1, dash='dot'),
+                line=dict(color='rgba(255, 127, 14, 0.7)', width=2, dash='dot'),
                 fill='tonexty',  # Fill between this and previous trace
-                fillcolor='rgba(255, 127, 14, 0.1)',
+                fillcolor='rgba(255, 127, 14, 0.15)',
                 hovertemplate='10th percentile: $%{y:,.0f}<extra></extra>',
                 showlegend=True
             ),
@@ -1556,18 +1556,18 @@ def main():
                 
                 # Merge Monte Carlo percentiles into results dataframe
                 if mc_results and 'year_by_year_percentiles' in mc_results:
-                    # Add columns for MC percentiles
+                    # Add columns for MC percentiles (conservative: 10th, 25th, median)
                     results_df['mc_10th_percentile'] = 0.0
+                    results_df['mc_25th_percentile'] = 0.0
                     results_df['mc_50th_percentile'] = 0.0
-                    results_df['mc_90th_percentile'] = 0.0
                     
                     for idx, row in results_df.iterrows():
                         year = int(row['year'])
                         if year in mc_results['year_by_year_percentiles']:
                             percentiles = mc_results['year_by_year_percentiles'][year]
                             results_df.at[idx, 'mc_10th_percentile'] = percentiles['10th']
+                            results_df.at[idx, 'mc_25th_percentile'] = percentiles['25th']
                             results_df.at[idx, 'mc_50th_percentile'] = percentiles['50th']
-                            results_df.at[idx, 'mc_90th_percentile'] = percentiles['90th']
             
             # Store in session state
             st.session_state['results_df'] = results_df
@@ -1709,14 +1709,15 @@ def main():
             # Explain Monte Carlo bands if present
             if mc_results and 'mc_10th_percentile' in results_df.columns and results_df['mc_10th_percentile'].sum() > 0:
                 st.info(f"""
-                    **📊 Understanding the Monte Carlo Projections:**
+                    **📊 Understanding the Monte Carlo Projections (Conservative View):**
                     - **Blue solid line** = Deterministic scenario (single path with average returns)
                     - **Dashed blue line** = Median (50th percentile) across {mc_results['total_simulations']:,} simulations
-                    - **Dotted orange line** = 10th percentile (pessimistic scenario - only 10% of outcomes are worse)
-                    - **Dotted light blue line** = 90th percentile (optimistic scenario - only 10% of outcomes are better)
-                    - **Orange shaded area** = Range where 80% of outcomes fall (between 10th and 90th percentile)
+                    - **Dash-dot orange line** = 25th percentile (conservative scenario - 75% of outcomes are better)
+                    - **Dotted orange line** = 10th percentile (pessimistic scenario - 90% of outcomes are better)
+                    - **Orange shaded area** = Range between 10th and 25th percentile (showing downside risk)
                     
                     The Monte Carlo bands show the **impact of market volatility** on your retirement plan. 
+                    This view focuses on **conservative scenarios** to help you plan for downside risk.
                     Even with a {mc_results['success_rate']*100:.0f}% success rate, the 10th percentile shows 
                     what could happen in unfavorable market conditions.
                 """)
@@ -1828,7 +1829,7 @@ def main():
         
         # Add Monte Carlo percentile columns if available
         if 'mc_10th_percentile' in results_df.columns and results_df['mc_10th_percentile'].sum() > 0:
-            display_columns.extend(['mc_10th_percentile', 'mc_50th_percentile', 'mc_90th_percentile'])
+            display_columns.extend(['mc_10th_percentile', 'mc_25th_percentile', 'mc_50th_percentile'])
         
         # Add optional columns if they exist
         if 'mortgage_payment' in results_df.columns:
@@ -1844,14 +1845,14 @@ def main():
         if 'mc_10th_percentile' in display_df.columns:
             display_df = display_df.rename(columns={
                 'mc_10th_percentile': 'MC 10th %ile',
-                'mc_50th_percentile': 'MC Median',
-                'mc_90th_percentile': 'MC 90th %ile'
+                'mc_25th_percentile': 'MC 25th %ile',
+                'mc_50th_percentile': 'MC Median'
             })
         
         # Format for display
         format_columns = ['total_balance', 'posttax_balance', 'pretax_balance', 'education_balance',
                          'mortgage_payment', 'redirected_mortgage', 'spending',
-                         'MC 10th %ile', 'MC Median', 'MC 90th %ile']
+                         'MC 10th %ile', 'MC 25th %ile', 'MC Median']
         for col in format_columns:
             if col in display_df.columns:
                 display_df[col] = display_df[col].apply(lambda x: f"${x:,.0f}" if pd.notna(x) and x > 0 else "-")
@@ -1862,10 +1863,10 @@ def main():
         # Add explanation if Monte Carlo columns are present
         if 'MC 10th %ile' in display_df.columns:
             st.info("""
-                **💡 Table includes Monte Carlo percentiles:**  
-                The table now shows the deterministic projection plus Monte Carlo simulation results. 
-                Compare `total_balance` (single scenario) with `MC Median`, `MC 10th %ile`, and `MC 90th %ile` 
-                to see the range of possible outcomes accounting for market volatility.
+                **💡 Table includes Monte Carlo percentiles (Conservative View):**  
+                The table shows the deterministic projection plus Monte Carlo simulation results focusing on conservative scenarios. 
+                Compare `total_balance` (single scenario) with `MC Median`, `MC 25th %ile`, and `MC 10th %ile` 
+                to understand downside risk and the range of possible outcomes accounting for market volatility.
             """)
         
         # Show first 30 years

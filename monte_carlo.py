@@ -118,6 +118,7 @@ class MonteCarloSimulator:
             balances_array = np.array(balances)
             year_by_year_percentiles[year] = {
                 '10th': np.percentile(balances_array, 10),
+                '25th': np.percentile(balances_array, 25),
                 '50th': np.percentile(balances_array, 50),
                 '90th': np.percentile(balances_array, 90)
             }
