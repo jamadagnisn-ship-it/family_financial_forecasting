@@ -74,7 +74,8 @@ class MonteCarloSimulator:
             'failure_years': [],
             'age_70_balances': [],
             'age_80_balances': [],
-            'paths': []  # Store some sample paths for visualization
+            'paths': [],  # Store ALL paths for percentile calculations
+            'year_by_year': {}  # Store balances by year for percentile calculation
         }
         
         for sim in range(num_simulations):
@@ -92,9 +93,15 @@ class MonteCarloSimulator:
             if outcome['failure_year']:
                 results['failure_years'].append(outcome['failure_year'])
             
-            # Store first 100 paths for visualization
-            if sim < 100:
-                results['paths'].append(outcome['path'])
+            # Store path for year-by-year percentile calculation
+            results['paths'].append(outcome['path'])
+            
+            # Aggregate year-by-year balances
+            for point in outcome['path']:
+                year_key = point['year']
+                if year_key not in results['year_by_year']:
+                    results['year_by_year'][year_key] = []
+                results['year_by_year'][year_key].append(point['balance'])
         
         print(f"  Completed {num_simulations} simulations!      ")
         
@@ -104,6 +111,16 @@ class MonteCarloSimulator:
         
         success_count = sum(1 for b in final_balances if b > 500000)
         success_rate = success_count / num_simulations
+        
+        # Calculate year-by-year percentiles
+        year_by_year_percentiles = {}
+        for year, balances in sorted(results['year_by_year'].items()):
+            balances_array = np.array(balances)
+            year_by_year_percentiles[year] = {
+                '10th': np.percentile(balances_array, 10),
+                '50th': np.percentile(balances_array, 50),
+                '90th': np.percentile(balances_array, 90)
+            }
         
         return {
             'success_rate': success_rate,
@@ -133,7 +150,8 @@ class MonteCarloSimulator:
             },
             'failure_years': results['failure_years'],
             'most_common_failure': self._most_common(results['failure_years']) if results['failure_years'] else None,
-            'sample_paths': results['paths'][:20]  # Return 20 sample paths
+            'sample_paths': results['paths'][:20],  # Return 20 sample paths
+            'year_by_year_percentiles': year_by_year_percentiles  # NEW: Year-by-year Monte Carlo percentiles
         }
     
     def _run_single_retirement_path(self, portfolio_template, scenario, owner_age, college_info) -> Dict:
