@@ -1138,32 +1138,21 @@ def main():
         help="Expected annual inflation"
     ) / 100
     
-    st.sidebar.subheader("529 College Contributions")
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🎓 College Cost Targets")
     
-    # Display 529 accounts and allow contribution adjustments
-    child_529_contribs = {}
+    # Collect 529 targets for each child
     child_529_targets = {}
     
-    for acc in base_accounts:
-        if acc.account_type == "529":
-            child_529_contribs[acc.owner] = st.sidebar.number_input(
-                f"{acc.owner} - Annual 529 Contribution",
-                min_value=0,
-                max_value=50000,
-                value=int(acc.annual_contribution),
-                step=1000,
-                key=f"contrib_{acc.owner}"
-            )
-    
-    st.sidebar.markdown("**🎓 College Cost Targets (Per Child)**")
     st.sidebar.info(f"""
+        **💡 Note:** Edit 529 balances and contributions in the main data table above, just like other accounts.
+        
         **Typical 4-Year College Costs ({CURRENT_YEAR} dollars):**
         - 🏫 In-State Public: ~$100K total
         - 🌎 Out-of-State Public: ~$200K total  
         - 🎓 Private University: ~$360K total
         
-        Enter your target coverage amount (e.g., 80% of expected cost).
-        The tool will adjust for inflation to college start year.
+        Enter your target coverage amount below for each child.
     """)
     
     for acc in base_accounts:
@@ -1319,16 +1308,11 @@ def main():
         stock_volatility = 0.18  # Default values for display purposes
         bond_volatility = 0.05
     
-    # Create portfolio with custom parameters
-    custom_accounts = create_portfolio_with_custom_contributions(
-        base_accounts, child_529_contribs
-    )
-    
     # Update growth rates for all accounts
-    for acc in custom_accounts:
+    for acc in base_accounts:
         acc.growth_rate = growth_rate
     
-    portfolio = Portfolio(custom_accounts, family)
+    portfolio = Portfolio(base_accounts, family)
     
     # Display current portfolio status
     col1, col2, col3, col4 = st.columns(4)
@@ -1343,102 +1327,6 @@ def main():
         st.metric("529 Education", f"${portfolio.education_balance():,.0f}")
     
     st.markdown("---")
-    
-    # 529 Analysis Section
-    st.header("🎓 529 College Savings Analysis")
-    
-    redirect_type = "pre-tax retirement accounts (401k/IRA)" if redirect_to_pretax else "post-tax brokerage accounts"
-    
-    # Explanatory info box
-    st.info(f"""
-        **📊 Methodology Note:**  
-        - **College costs** are projected in **nominal (future) dollars** with {inflation_rate*100:.1f}% annual inflation
-        - **529 growth rates** used are **nominal** ({(growth_rate + inflation_rate)*100:.1f}% = {growth_rate*100:.1f}% real return + {inflation_rate*100:.1f}% inflation)
-        - **Target amounts** are based on your specified goals (set in sidebar)
-        - College start years calculated assuming children attend at age 18
-        
-        **💰 Contribution Redirection:**  
-        Once 529 contributions stop (when target is reached), those funds are automatically redirected to **{redirect_type}** 
-        to continue building retirement savings. This optimizes overall portfolio growth.
-        
-        This ensures apples-to-apples comparison between inflated college costs and investment growth.
-    """)
-    
-    college_calc = CollegeCalculator()
-    status_data = analyze_529_status(
-        custom_accounts, college_calc, inflation_rate, children_info, child_529_targets,
-        enable_monte_carlo=enable_monte_carlo,
-        num_simulations=num_simulations if enable_monte_carlo else 0,
-        growth_rate=growth_rate,
-        volatility=volatility
-    )
-    
-    col1, col2 = st.columns(2)
-    
-    for i, status in enumerate(status_data):
-        with col1 if i % 2 == 0 else col2:
-            if status['status'] == 'success':
-                box_class = 'success-box'
-                icon = '✅'
-            elif status['status'] == 'warning':
-                box_class = 'warning-box'
-                icon = '⚠️'
-            else:
-                box_class = 'danger-box'
-                icon = '❌'
-            
-            st.markdown(f"""
-                <div class='{box_class}'>
-                    <h3>{icon} {status['child']}'s 529</h3>
-                    <p><strong>Current Balance:</strong> ${status['current_balance']:,.0f}</p>
-                    <p><strong>Annual Contribution:</strong> ${status['annual_contribution']:,.0f}</p>
-                    <p><strong>College Target:</strong> ${status['target']:,.0f}</p>
-                    <p><strong>Projected Value (deterministic):</strong> ${status['projected_value']:,.0f}</p>
-                    <p><strong>Coverage:</strong> {status['coverage_pct']:.1f}%</p>
-                    <p><strong>Recommendation:</strong> {status['message']}</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Show Monte Carlo results if available
-            if status['monte_carlo'] is not None:
-                mc = status['monte_carlo']
-                st.write(f"**🎲 Monte Carlo Analysis ({mc['total_simulations']:,} simulations):**")
-                st.write(f"- **Success Rate:** {mc['success_rate']*100:.1f}% ({mc['success_count']:,} of {mc['total_simulations']:,} scenarios meet target)")
-                st.write(f"- **Median Outcome:** ${mc['percentiles']['50th']:,.0f}")
-                st.write(f"- **10th Percentile (worst):** ${mc['percentiles']['10th']:,.0f}")
-                st.write(f"- **90th Percentile (best):** ${mc['percentiles']['90th']:,.0f}")
-                
-                if mc['success_rate'] < 0.80:
-                    st.warning(f"⚠️ Only {mc['success_rate']*100:.0f}% probability of reaching target. Consider increasing contributions.")
-                elif mc['success_rate'] >= 0.95:
-                    st.success(f"✅ {mc['success_rate']*100:.0f}% probability of success - very strong position!")
-    
-    st.markdown("---")
-    
-    # Mortgage Information Section
-    if enable_mortgage and monthly_emi > 0:
-        st.header("🏠 House Mortgage Plan")
-        
-        annual_mortgage = monthly_emi * 12
-        payoff_year = CURRENT_YEAR + mortgage_term_remaining
-        total_paid = annual_mortgage * mortgage_term_remaining
-        
-        redirect_type = "pre-tax retirement accounts (401k/IRA)" if redirect_to_pretax else "post-tax brokerage accounts"
-        
-        st.info(f"""
-            **📊 Mortgage Details:**  
-            - **Monthly EMI:** ${monthly_emi:,.0f} (Principal + Interest)
-            - **Annual Payment:** ${annual_mortgage:,.0f}
-            - **Remaining Term:** {mortgage_term_remaining} years
-            - **Payoff Year:** {payoff_year}
-            - **Total Remaining Payments:** ${total_paid:,.0f}
-            
-            **💰 Post-Payoff Savings Boost:**  
-            After the mortgage is paid off in {payoff_year}, the ${annual_mortgage:,.0f}/year will be automatically 
-            redirected to your **{redirect_type}**, accelerating retirement savings growth!
-        """)
-        
-        st.markdown("---")
     
     # Final validation before running scenario
     # Create a dataframe from current base_accounts to validate
@@ -1476,16 +1364,29 @@ def main():
     
     # Run Scenario Button (disabled if validation fails)
     if not final_validation_ok:
-        st.error("⛔ **Cannot run scenario:** Please fix the data validation errors shown above in the account table.")
+        st.error("⛔ **Cannot run scenarios:** Please fix the data validation errors shown above in the account table.")
     
-    if st.button("🚀 Run Retirement Scenario", type="primary", disabled=not final_validation_ok):
+    if st.button("🚀 Run Scenarios", type="primary", disabled=not final_validation_ok):
         track_event('scenario_run', {
             'allocation_strategy': allocation_strategy,
             'retirement_age': first_retirement_age,
             'staggered': len(retirement_ages) > 1 and first_retirement_age != last_retirement_age,
             'mortgage_enabled': enable_mortgage
         })
-        with st.spinner("Running projection..."):
+        with st.spinner("Running projections (529 + retirement)..."):
+            # Store initial portfolio balance
+            initial_portfolio_balance = portfolio.total_balance()
+            
+            # Run 529 Analysis
+            college_calc = CollegeCalculator()
+            status_data = analyze_529_status(
+                base_accounts, college_calc, inflation_rate, children_info, child_529_targets,
+                enable_monte_carlo=enable_monte_carlo,
+                num_simulations=num_simulations if enable_monte_carlo else 0,
+                growth_rate=growth_rate,
+                volatility=volatility
+            )
+            
             # Create scenario name based on retirement configuration
             if len(retirement_ages) > 1 and first_retirement_age != last_retirement_age:
                 scenario_name = f"Retire at {first_retirement_age}-{last_retirement_age} (staggered)"
@@ -1574,6 +1475,19 @@ def main():
             st.session_state['success_metrics'] = success_metrics
             st.session_state['scenario'] = scenario
             st.session_state['mc_results'] = mc_results
+            st.session_state['status_data'] = status_data
+            st.session_state['children_info'] = children_info
+            st.session_state['enable_mortgage'] = enable_mortgage
+            st.session_state['monthly_emi'] = monthly_emi
+            st.session_state['mortgage_term_remaining'] = mortgage_term_remaining
+            st.session_state['redirect_to_pretax'] = redirect_to_pretax
+            st.session_state['inflation_rate'] = inflation_rate
+            st.session_state['growth_rate'] = growth_rate
+            st.session_state['first_retirement_age'] = first_retirement_age
+            st.session_state['last_retirement_age'] = last_retirement_age
+            st.session_state['primary_owner_age'] = primary_owner_age
+            st.session_state['retirement_ages'] = retirement_ages
+            st.session_state['initial_portfolio_balance'] = initial_portfolio_balance
     
     # Display results if available
     if 'results_df' in st.session_state:
@@ -1581,9 +1495,113 @@ def main():
         success_metrics = st.session_state['success_metrics']
         scenario = st.session_state['scenario']
         mc_results = st.session_state.get('mc_results', None)
+        status_data = st.session_state.get('status_data', [])
+        children_info = st.session_state.get('children_info', {})
+        enable_mortgage = st.session_state.get('enable_mortgage', False)
+        monthly_emi = st.session_state.get('monthly_emi', 0)
+        mortgage_term_remaining = st.session_state.get('mortgage_term_remaining', 0)
+        redirect_to_pretax = st.session_state.get('redirect_to_pretax', False)
+        inflation_rate = st.session_state.get('inflation_rate', 0.03)
+        growth_rate = st.session_state.get('growth_rate', 0.07)
+        first_retirement_age = st.session_state.get('first_retirement_age', 65)
+        last_retirement_age = st.session_state.get('last_retirement_age', 65)
+        primary_owner_age = st.session_state.get('primary_owner_age', 45)
+        retirement_ages = st.session_state.get('retirement_ages', {})
+        initial_portfolio_balance = st.session_state.get('initial_portfolio_balance', 0)
         
         st.markdown("---")
         st.header("📊 Scenario Results")
+        
+        # 529 College Savings Analysis
+        if status_data:
+            st.subheader("🎓 529 College Savings Analysis")
+            
+            redirect_type = "pre-tax retirement accounts (401k/IRA)" if redirect_to_pretax else "post-tax brokerage accounts"
+            
+            # Explanatory info box
+            st.info(f"""
+                **📊 Methodology Note:**  
+                - **College costs** are projected in **nominal (future) dollars** with {inflation_rate*100:.1f}% annual inflation
+                - **529 growth rates** used are **nominal** ({(growth_rate + inflation_rate)*100:.1f}% = {growth_rate*100:.1f}% real return + {inflation_rate*100:.1f}% inflation)
+                - **Target amounts** are based on your specified goals (set in sidebar)
+                - College start years calculated assuming children attend at age 18
+                
+                **💰 Contribution Redirection:**  
+                Once 529 contributions stop (when target is reached), those funds are automatically redirected to **{redirect_type}** 
+                to continue building retirement savings. This optimizes overall portfolio growth.
+                
+                This ensures apples-to-apples comparison between inflated college costs and investment growth.
+            """)
+            
+            col1, col2 = st.columns(2)
+            
+            for i, status in enumerate(status_data):
+                with col1 if i % 2 == 0 else col2:
+                    if status['status'] == 'success':
+                        box_class = 'success-box'
+                        icon = '✅'
+                    elif status['status'] == 'warning':
+                        box_class = 'warning-box'
+                        icon = '⚠️'
+                    else:
+                        box_class = 'danger-box'
+                        icon = '❌'
+                    
+                    st.markdown(f"""
+                        <div class='{box_class}'>
+                            <h3>{icon} {status['child']}'s 529</h3>
+                            <p><strong>Current Balance:</strong> ${status['current_balance']:,.0f}</p>
+                            <p><strong>Annual Contribution:</strong> ${status['annual_contribution']:,.0f}</p>
+                            <p><strong>College Target:</strong> ${status['target']:,.0f}</p>
+                            <p><strong>Projected Value (deterministic):</strong> ${status['projected_value']:,.0f}</p>
+                            <p><strong>Coverage:</strong> {status['coverage_pct']:.1f}%</p>
+                            <p><strong>Recommendation:</strong> {status['message']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Show Monte Carlo results if available
+                    if status['monte_carlo'] is not None:
+                        mc = status['monte_carlo']
+                        st.write(f"**🎲 Monte Carlo Analysis ({mc['total_simulations']:,} simulations):**")
+                        st.write(f"- **Success Rate:** {mc['success_rate']*100:.1f}% ({mc['success_count']:,} of {mc['total_simulations']:,} scenarios meet target)")
+                        st.write(f"- **Median Outcome:** ${mc['percentiles']['50th']:,.0f}")
+                        st.write(f"- **10th Percentile (worst):** ${mc['percentiles']['10th']:,.0f}")
+                        st.write(f"- **90th Percentile (best):** ${mc['percentiles']['90th']:,.0f}")
+                        
+                        if mc['success_rate'] < 0.80:
+                            st.warning(f"⚠️ Only {mc['success_rate']*100:.0f}% probability of reaching target. Consider increasing contributions.")
+                        elif mc['success_rate'] >= 0.95:
+                            st.success(f"✅ {mc['success_rate']*100:.0f}% probability of success - very strong position!")
+            
+            st.markdown("---")
+        
+        # Mortgage Information Section
+        if enable_mortgage and monthly_emi > 0:
+            st.subheader("🏠 House Mortgage Plan")
+            
+            annual_mortgage = monthly_emi * 12
+            payoff_year = CURRENT_YEAR + mortgage_term_remaining
+            total_paid = annual_mortgage * mortgage_term_remaining
+            
+            redirect_type = "pre-tax retirement accounts (401k/IRA)" if redirect_to_pretax else "post-tax brokerage accounts"
+            
+            st.info(f"""
+                **📊 Mortgage Details:**  
+                - **Monthly EMI:** ${monthly_emi:,.0f} (Principal + Interest)
+                - **Annual Payment:** ${annual_mortgage:,.0f}
+                - **Remaining Term:** {mortgage_term_remaining} years
+                - **Payoff Year:** {payoff_year}
+                - **Total Remaining Payments:** ${total_paid:,.0f}
+                
+                **💰 Post-Payoff Savings Boost:**  
+                After the mortgage is paid off in {payoff_year}, the ${annual_mortgage:,.0f}/year will be automatically 
+                redirected to your **{redirect_type}**, accelerating retirement savings growth!
+            """)
+            
+            st.markdown("---")
+        
+        # Retirement Projection Results
+        st.subheader("💰 Retirement Projection")
         
         # Success indicator
         if success_metrics['success']:
@@ -1607,7 +1625,7 @@ def main():
             st.metric(
                 retirement_label,
                 f"${balance_at_retirement:,.0f}",
-                delta=f"${balance_at_retirement - portfolio.total_balance():,.0f}"
+                delta=f"${balance_at_retirement - initial_portfolio_balance:,.0f}"
             )
         
         with col2:
